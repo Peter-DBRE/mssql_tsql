@@ -1,0 +1,39 @@
+SELECT
+		CASE sys.version
+			WHEN 611 THEN '2005' 
+			WHEN 661 THEN '2008'
+			WHEN 665 THEN '2008 R2' 
+		END AS DbVersion,
+	sys.dbid,
+	sys.name,
+	q.DbBackupSize,
+	q.DbBackupType,
+	q.DbBackupDate,
+	q.DbBackupLocation
+FROM sys.sysdatabases sys FULL OUTER JOIN	(
+							SELECT
+								b.DbVersion,
+								b.DbName,
+								bs.backup_size DbBackupSize,
+								b.DbBackupType,
+								DbBackupDate,
+								physical_device_name DbBackupLocation
+							FROM msdb.dbo.backupset bs INNER JOIN	(	SELECT  
+																			s.version DbVersion,
+																			s.name DbName,
+																			bs.type DbBackupType,
+																			Max(bs.backup_finish_date) AS DbBackupDate
+											 							FROM     sys.sysdatabases AS s LEFT OUTER JOIN msdb.dbo.backupset AS bs ON bs.database_name = s.name
+																								   LEFT OUTER JOIN msdb.dbo.backupmediafamily AS mf ON bs.media_set_id = mf.media_set_id
+																		GROUP BY s.name, bs.type, s.version 
+																	 )b ON b.DbName = bs.database_name
+																			AND b.DbBackupType = bs.type
+																			AND b.DbBackupDate = bs.backup_finish_date						                                                                      
+																		INNER JOIN msdb.dbo.backupmediafamily AS mf ON bs.media_set_id = mf.media_set_id
+																) AS q ON sys.name = q.DbName
+
+
+Select * from msdb.dbo.backupset bs
+inner join msdb.dbo.backupmediafamily AS mf ON bs.media_set_id = mf.media_set_id
+where database_name = ''
+order by backup_start_date desc
